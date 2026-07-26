@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-__all__ = ["Commit", "Repository", "ServerInfo", "User", "WorkflowRun"]
+__all__ = ["Commit", "Release", "Repository", "ServerInfo", "User", "WorkflowRun"]
 
 
 def _parse_timestamp(value: Any) -> datetime | None:
@@ -152,6 +152,32 @@ class WorkflowRun:
             url=data.get("url") or None,
             started_at=_parse_timestamp(data.get("run_started_at")),
             updated_at=_parse_timestamp(data.get("updated_at")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Release:
+    """A published (or drafted) release."""
+
+    id: int
+    tag_name: str
+    name: str | None
+    draft: bool
+    prerelease: bool
+    html_url: str | None
+    published_at: datetime | None
+
+    @classmethod
+    def from_api(cls, data: dict[str, Any]) -> Release:
+        """Build from an entry of ``/releases``."""
+        return cls(
+            id=int(data.get("id", 0)),
+            tag_name=str(data.get("tag_name", "")),
+            name=data.get("name") or None,
+            draft=bool(data.get("draft", False)),
+            prerelease=bool(data.get("prerelease", False)),
+            html_url=data.get("html_url") or None,
+            published_at=_parse_timestamp(data.get("published_at")),
         )
 
 

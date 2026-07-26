@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import socket
+from collections.abc import Mapping
 from types import TracebackType
 from typing import Any, Self
 
@@ -12,10 +13,13 @@ from yarl import URL
 
 from .constants import (
     API_PREFIX,
+    COUNT_HEADER,
     DEFAULT_TIMEOUT,
+    EP_ISSUE_SEARCH,
     EP_NEW_NOTIFICATIONS,
     EP_REPO,
     EP_REPO_COMMITS,
+    EP_REPO_RELEASES,
     EP_REPO_TASKS,
     EP_USER,
     EP_USER_REPOS,
@@ -28,7 +32,7 @@ from .exceptions import (
     ForgejoNotFoundError,
     ForgejoResponseError,
 )
-from .models import Commit, Repository, ServerInfo, User, WorkflowRun
+from .models import Commit, Release, Repository, ServerInfo, User, WorkflowRun
 
 __all__ = ["ForgejoClient"]
 
@@ -82,6 +86,13 @@ class ForgejoClient:
 
     async def _request(self, path: str, **params: Any) -> Any:
         """Perform one GET and return decoded JSON."""
+        payload, _ = await self._request_with_headers(path, **params)
+        return payload
+
+    async def _request_with_headers(
+        self, path: str, **params: Any
+    ) -> tuple[Any, Mapping[str, str]]:
+        """Perform one GET and return decoded JSON plus the response headers."""
         if self._session is None:
             self._session = aiohttp.ClientSession()
             self._owns_session = True
@@ -120,7 +131,7 @@ class ForgejoClient:
             # captive login page) answers 200 with HTML. Decoding rather than
             # trusting Content-Type keeps the error message honest.
             try:
-                return await response.json(content_type=None)
+                return await response.json(content_type=None), response.headers
             except ValueError as err:
                 raise ForgejoResponseError(
                     f"Expected JSON from {path}; got something else. Is this URL "
@@ -147,6 +158,42 @@ class ForgejoClient:
         if not isinstance(data, dict):
             raise ForgejoResponseError("Unexpected payload for notifications")
         return int(data.get("new", 0))
+
+    async def _count(self, path: str, **params: Any) -> int:
+        """Ask for a single item and read the total out of the count header.
+
+        Forgejo reports the size of the full result set in ``X-Total-Count``,
+        so paging through everything just to count it would be wasted traffic.
+        """
+        _, headers = await self._request_with_headers(path, limit=1, **params)
+        try:
+            return int(headers.get(COUNT_HEADER, 0))
+        except (TypeError, ValueError):
+            raise ForgejoResponseError(f"No usable {COUNT_HEADER} for {path}") from None
+
+    async def get_assigned_issue_count(self) -> int:
+        """Count open issues assigned to the authenticated user."""
+        return await self._count(EP_ISSUE_SEARCH, state="open", assigned="true")
+
+    async def get_review_request_count(self) -> int:
+        """Count open pull requests waiting on the user's review."""
+        return await self._count(
+            EP_ISSUE_SEARCH, state="open", type="pulls", review_requested="true"
+        )
+
+    async def get_latest_release(self, owner: str, repo: str) -> Release | None:
+        """Return the newest release, or ``None`` if the repo has none.
+
+        ``/releases/latest`` answers 404 for a repository without releases, so
+        the list endpoint is used instead: an empty list is a state, not an
+        error.
+        """
+        data = await self._request(
+            EP_REPO_RELEASES.format(owner=owner, repo=repo), limit=1
+        )
+        if not isinstance(data, list) or not data or not isinstance(data[0], dict):
+            return None
+        return Release.from_api(data[0])
 
     async def list_repositories(self, limit: int = REPO_PAGE_SIZE) -> list[Repository]:
         """List repositories the token can see, newest activity first."""

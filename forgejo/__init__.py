@@ -11,7 +11,7 @@ from .exceptions import (
     ForgejoNotFoundError,
     ForgejoResponseError,
 )
-from .models import Commit, Repository, ServerInfo, User, WorkflowRun
+from .models import Commit, Release, Repository, ServerInfo, User, WorkflowRun
 
 __version__ = "1.0.0"
 
@@ -24,6 +24,7 @@ __all__ = [
     "ForgejoError",
     "ForgejoNotFoundError",
     "ForgejoResponseError",
+    "Release",
     "Repository",
     "ServerInfo",
     "User",

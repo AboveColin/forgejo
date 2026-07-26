@@ -18,6 +18,12 @@ EP_NEW_NOTIFICATIONS: Final = "/notifications/new"
 EP_REPO: Final = "/repos/{owner}/{repo}"
 EP_REPO_TASKS: Final = "/repos/{owner}/{repo}/actions/tasks"
 EP_REPO_COMMITS: Final = "/repos/{owner}/{repo}/commits"
+EP_REPO_RELEASES: Final = "/repos/{owner}/{repo}/releases"
+EP_ISSUE_SEARCH: Final = "/repos/issues/search"
+
+# Counting endpoints report the total in a header, so asking for a single item
+# is enough to learn how many there are.
+COUNT_HEADER: Final = "X-Total-Count"
 
 # Forgejo pages repository listings; 50 is the server-side default maximum on
 # most instances and keeps the picker in a config flow to one round trip.
