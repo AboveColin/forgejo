@@ -101,3 +101,34 @@ def fixture_closed_port() -> str:
     port = probe.getsockname()[1]
     probe.close()
     return f"http://127.0.0.1:{port}"
+
+
+@pytest.fixture(autouse=True)
+def no_outbound_network(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail any test that tries to resolve a name outside loopback.
+
+    This is a tripwire, not a limit: every test here talks to a fake on
+    127.0.0.1, so correct tests never notice it exists. It is here because a
+    test that points a client at a real host looks exactly like a test that
+    points it at a fake, right up until the suite is talking to production.
+
+    The guard sits on getaddrinfo rather than on connect, because that is where
+    every outbound connection starts and it is the last point at which the
+    hostname is still readable. Guarding the socket instead reports an empty
+    address list, which says nothing about what went wrong.
+    """
+    import socket
+
+    allowed = {"127.0.0.1", "::1", "localhost", ""}
+    real_getaddrinfo = socket.getaddrinfo
+
+    def guarded(host, *args, **kwargs):  # noqa: ANN001, ANN002, ANN003, ANN202
+        if host is not None and str(host) not in allowed:
+            raise AssertionError(
+                f"a test tried to reach {host!r}. Tests must only talk to the "
+                "local fake: point the client at the api fixture, not a real "
+                "host."
+            )
+        return real_getaddrinfo(host, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "getaddrinfo", guarded)
