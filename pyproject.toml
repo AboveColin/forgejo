@@ -24,6 +24,9 @@ classifiers = [
 ]
 dependencies = ["aiohttp>=3.9", "yarl>=1.9"]
 
+[project.optional-dependencies]
+test = ["pytest>=8", "pytest-asyncio>=1.0", "pytest-cov"]
+
 [project.urls]
 Homepage = "https://github.com/AboveColin/forgejo"
 Issues = "https://github.com/AboveColin/forgejo/issues"
@@ -39,3 +42,7 @@ py-version = "3.12"
 
 [tool.pylint."messages control"]
 disable = ["too-many-instance-attributes", "too-many-arguments", "too-few-public-methods"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
