@@ -117,6 +117,13 @@ instance returning its own login page with HTTP 200.
   `TERMINAL_RUN_STATUSES` holds the set; anything else means still running,
   which is not the same as failing.
 
+## Supporting the project
+
+This project is free and stays free. If it is useful to you, you can support its
+development through [GitHub Sponsors](https://github.com/sponsors/AboveColin).
+Sponsorship is voluntary and unlocks nothing: every feature, fix and security
+update ships in the public release.
+
 ## License
 
 MIT
